@@ -1,0 +1,208 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Une los Meses Pares</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Comic Sans MS', cursive, sans-serif;
+      background: linear-gradient(to right, #a8edea, #fed6e3);
+      text-align: center;
+      touch-action: none;
+    }
+    canvas {
+      background-color: #fff8f0;
+      display: block;
+      margin: 20px auto;
+      border: 5px dashed #ff9ff3;
+      border-radius: 15px;
+      touch-action: none;
+    }
+    h1 {
+      color: #ff6b6b;
+      font-size: 2em;
+      margin-top: 20px;
+    }
+    p {
+      font-size: 1.2em;
+      color: #222f3e;
+    }
+    #puntaje {
+      font-size: 1.4em;
+      color: #1e272e;
+      margin: 10px;
+    }
+    #reiniciarBtn {
+      background-color: #48dbfb;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      font-size: 1em;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>¡Une los Meses Pares!</h1>
+  <p>Arrastra los meses pares hasta el lado derecho para ganar puntos.</p>
+  <div id="puntaje">Puntaje: 0</div>
+  <button id="reiniciarBtn">Reiniciar juego</button>
+  <canvas id="juego"></canvas>
+  <script>
+    const canvas = document.getElementById("juego");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth - 40;
+    canvas.height = window.innerHeight - 250;
+
+    const meses = [
+      "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ];
+
+    let puntos = [], objetivos = [], arrastrando = null;
+    let mouse = { x: 0, y: 0 };
+    let puntaje = 0;
+    const puntajeEl = document.getElementById("puntaje");
+
+    function actualizarPuntaje() {
+      puntajeEl.textContent = `Puntaje: ${puntaje}`;
+    }
+
+    function inicializarJuego() {
+      puntos = meses.map((mes, i) => ({
+        nombre: mes,
+        mesIndex: i + 1,
+        x: 100,
+        y: 60 + i * 40,
+        conectado: false
+      }));
+
+      objetivos = puntos
+        .filter(p => p.mesIndex % 2 === 0)
+        .map((p, i) => ({
+          x: canvas.width - 150,
+          y: 60 + i * 60,
+          mesIndex: p.mesIndex
+        }));
+
+      puntaje = 0;
+      actualizarPuntaje();
+    }
+
+    document.getElementById("reiniciarBtn").addEventListener("click", inicializarJuego);
+
+    function dibujar() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = "#ff9ff3";
+      ctx.fillRect(canvas.width - 170, 0, 10, canvas.height);
+
+      ctx.fillStyle = "#ff6b6b";
+      objetivos.forEach(obj => {
+        ctx.beginPath();
+        ctx.arc(obj.x, obj.y, 15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#222";
+        ctx.fillText("Aquí", obj.x - 15, obj.y + 30);
+        ctx.fillStyle = "#ff6b6b";
+      });
+
+      puntos.forEach(p => {
+        ctx.fillStyle = p.mesIndex % 2 === 0 ? "#48dbfb" : "#c8d6e5";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#222";
+        ctx.font = "14px Comic Sans MS";
+        ctx.fillText(p.nombre, p.x + 20, p.y + 5);
+      });
+
+      if (arrastrando) {
+        ctx.strokeStyle = "#10ac84";
+        ctx.beginPath();
+        ctx.moveTo(arrastrando.x, arrastrando.y);
+        ctx.lineTo(mouse.x, mouse.y);
+        ctx.stroke();
+      }
+    }
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      if (e.touches) {
+        return {
+          x: e.touches[0].clientX - rect.left,
+          y: e.touches[0].clientY - rect.top
+        };
+      } else {
+        return {
+          x: e.offsetX,
+          y: e.offsetY
+        };
+      }
+    }
+
+    canvas.addEventListener("mousedown", e => {
+      mouse = getPos(e);
+      arrastrando = puntos.find(p =>
+        Math.hypot(p.x - mouse.x, p.y - mouse.y) < 15 && !p.conectado
+      );
+    });
+
+    canvas.addEventListener("mousemove", e => {
+      mouse = getPos(e);
+    });
+
+    canvas.addEventListener("mouseup", e => {
+      mouse = getPos(e);
+      if (arrastrando) verificarSoltar();
+    });
+
+    canvas.addEventListener("touchstart", e => {
+      mouse = getPos(e);
+      arrastrando = puntos.find(p =>
+        Math.hypot(p.x - mouse.x, p.y - mouse.y) < 15 && !p.conectado
+      );
+    });
+
+    canvas.addEventListener("touchmove", e => {
+      mouse = getPos(e);
+    });
+
+    canvas.addEventListener("touchend", e => {
+      if (arrastrando) verificarSoltar();
+    });
+
+    function verificarSoltar() {
+      const objetivo = objetivos.find(o =>
+        Math.hypot(o.x - mouse.x, o.y - mouse.y) < 20
+      );
+
+      if (objetivo && objetivo.mesIndex === arrastrando.mesIndex) {
+        arrastrando.x = objetivo.x;
+        arrastrando.y = objetivo.y;
+        arrastrando.conectado = true;
+        puntaje += 10;
+        actualizarPuntaje();
+      } else {
+        arrastrando.x = 100;
+        arrastrando.y = 60 + (arrastrando.mesIndex - 1) * 40;
+      }
+
+      arrastrando = null;
+    }
+
+    function bucle() {
+      dibujar();
+      requestAnimationFrame(bucle);
+    }
+
+    inicializarJuego();
+    bucle();
+  </script>
+</body>
+</html>
